@@ -4,14 +4,13 @@ import numpy as np
 import joblib
 from sklearn.preprocessing import LabelEncoder
 
-# Load trained model
+# Load model
 model = joblib.load("random_forest_model.pkl")
 
-# Encoders
+# Set up encoders with same values used in training
 state_encoder = LabelEncoder()
 race_encoder = LabelEncoder()
 
-# Fit encoders with the same values as used during training
 state_encoder.fit([
     "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME",
     "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA",
@@ -23,7 +22,7 @@ st.set_page_config(page_title="Healthcare Fraud Detection", layout="centered")
 st.title("🩺 Healthcare Insurance Fraud Detection")
 st.write("Enter claim details below to predict whether it's potentially fraudulent.")
 
-# Function to get user inputs
+# Form Input UI
 def get_user_input():
     st.subheader("📋 Claim Information")
 
@@ -47,7 +46,6 @@ def get_user_input():
 
     st.subheader("⚕️ Chronic Conditions")
     yn_map = {"No": 0, "Yes": 1}
-
     chronic_features = {
         "ChronicCond_Alzheimer": st.selectbox("Alzheimer", ["No", "Yes"]),
         "ChronicCond_Heartfailure": st.selectbox("Heart Failure", ["No", "Yes"]),
@@ -70,7 +68,7 @@ def get_user_input():
         'NoOfMonths_PartACov': NoOfMonths_PartACov,
         'NoOfMonths_PartBCov': NoOfMonths_PartBCov,
         'State': state_encoder.transform([State])[0],
-        'County': hash(County) % 100,  # Or use a consistent encoding if needed
+        'County': hash(County) % 100,  # Example numeric hash
         'Race': race_encoder.transform([Race])[0],
         'Gender': Gender,
         'ClaimDuration': ClaimDuration,
@@ -82,11 +80,13 @@ def get_user_input():
 
     return pd.DataFrame([data])
 
-# Get input from user
+# Predict
 input_df = get_user_input()
 
-# Predict
 if st.button("🔍 Predict Fraud Status"):
+    # Just to be safe
+    input_df = input_df[model.feature_names_in_]
+    
     prediction = model.predict(input_df)[0]
     prob = model.predict_proba(input_df)[0]
 
