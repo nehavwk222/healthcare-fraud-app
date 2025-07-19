@@ -3,12 +3,11 @@ import pandas as pd
 import numpy as np
 import joblib
 from sklearn.preprocessing import LabelEncoder
-from PIL import Image
 
-# Load trained model
+# Load model
 model = joblib.load("random_forest_model.pkl")
 
-# Encoders setup (same as training phase)
+# Encoders (same as used during training)
 state_encoder = LabelEncoder()
 race_encoder = LabelEncoder()
 
@@ -19,77 +18,67 @@ state_encoder.fit([
 ])
 race_encoder.fit(["White", "Black", "Asian", "Hispanic", "Other"])
 
-# Set Streamlit page config
-st.set_page_config(page_title="Healthcare Fraud Detection System", layout="wide", page_icon="🩺")
+# Set Page Config
+st.set_page_config(page_title="Healthcare Fraud Detection", layout="wide")
 
-# Optional banner image
-st.image("https://cdn.pixabay.com/photo/2021/04/21/06/18/medical-6195053_960_720.jpg", use_column_width=True)
+# Sidebar Branding
+with st.sidebar:
+    st.image("https://i.imgur.com/2zB1vZP.png", width=250, caption="Healthcare AI Fraud Detection")
+    st.markdown("---")
+    st.write("🚨 Powered by Machine Learning")
+    st.write("Built with ❤️ using Streamlit")
 
-st.markdown("""
-    <style>
-        .main {
-            background-color: #f9f9f9;
-        }
-        .stButton>button {
-            background-color: #0b74de;
-            color: white;
-            font-weight: bold;
-            border-radius: 10px;
-            padding: 0.5em 2em;
-        }
-        .stNumberInput>div>input {
-            border-radius: 5px;
-        }
-    </style>
-""", unsafe_allow_html=True)
+# Page Title
+st.markdown("<h1 style='text-align: center;'>🩺 Healthcare Insurance Fraud Detector</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Enter patient and claim details to check for potential fraud</p>", unsafe_allow_html=True)
+st.markdown("---")
 
-st.title("🛡️ AI-Powered Healthcare Insurance Fraud Detection")
-st.markdown("""
-This AI system helps predict whether a claim is **potentially fraudulent** or **legitimate** based on claim metadata.
-Use the form below to simulate a new claim prediction.
----
-""")
-
-# Input form section
+# User Input Function
 def get_user_input():
-    with st.form("claim_form"):
-        st.subheader("📋 Claim Details")
+    col1, col2 = st.columns(2)
 
-        col1, col2 = st.columns(2)
-        with col1:
-            IPAnnualReimbursementAmt = st.number_input("💵 Annual Reimbursement Amount", min_value=0.0, value=1000.0)
-            IPAnnualDeductibleAmt = st.number_input("💸 Annual Deductible Amount", min_value=0.0, value=500.0)
-            InscClaimAmtReimbursed = st.number_input("💰 Claim Amount Reimbursed", min_value=0.0, value=100.0)
-            DeductibleAmtPaid = st.number_input("💳 Deductible Amount Paid", min_value=0.0, value=100.0)
-        with col2:
-            NoOfMonths_PartACov = st.slider("🕐 Months of Part A Coverage", 0, 12, 12)
-            NoOfMonths_PartBCov = st.slider("🕑 Months of Part B Coverage", 0, 12, 12)
-            ClaimDuration = st.slider("📆 Claim Duration (days)", 0, 100, 10)
-            HospitalStayDuration = st.slider("🏥 Hospital Stay Duration (days)", 0, 100, 5)
+    with col1:
+        st.subheader("💳 Financial Details")
+        IPAnnualReimbursementAmt = st.number_input("Annual Reimbursement Amount ($)", min_value=0.0, value=1000.0)
+        IPAnnualDeductibleAmt = st.number_input("Annual Deductible Amount ($)", min_value=0.0, value=500.0)
+        InscClaimAmtReimbursed = st.number_input("Claim Amount Reimbursed ($)", min_value=0.0, value=100.0)
+        DeductibleAmtPaid = st.number_input("Deductible Amount Paid ($)", min_value=0.0, value=100.0)
 
-        st.subheader("📍 Demographics")
-        col3, col4 = st.columns(2)
-        with col3:
-            State = st.selectbox("State", state_encoder.classes_.tolist())
-            County = st.text_input("County", value="Default County")
-        with col4:
-            Race = st.selectbox("Race", race_encoder.classes_.tolist())
-            Gender = st.radio("Gender", ["Female", "Male"], horizontal=True)
-            Gender = 0 if Gender == "Female" else 1
+        st.subheader("📍 Location Info")
+        State = st.selectbox("Patient's State", state_encoder.classes_.tolist())
+        County = st.text_input("County (for internal ID)", value="Default County")
+        Race = st.selectbox("Race", race_encoder.classes_.tolist())
 
-        st.subheader("🩺 Chronic Conditions")
-        chronic_features = {}
-        chronic_conditions = [
-            "Alzheimer", "Heartfailure", "KidneyDisease", "Cancer", "ObstrPulmonary",
-            "Depression", "Diabetes", "IschemicHeart", "Osteoporasis", "rheumatoidarthritis", "stroke"
-        ]
-        yn_map = {"No": 0, "Yes": 1}
+    with col2:
+        st.subheader("👤 Patient Info")
+        Gender = st.radio("Gender", ["Female", "Male"])
+        Gender = 0 if Gender == "Female" else 1
 
-        for cond in chronic_conditions:
-            chronic_features[f"ChronicCond_{cond}"] = st.selectbox(cond.replace("rheumatoidarthritis", "Rheumatoid Arthritis").replace("ObstrPulmonary", "Pulmonary Disease"), ["No", "Yes"], key=cond)
+        NoOfMonths_PartACov = st.slider("Months of Part A Coverage", 0, 12, 12)
+        NoOfMonths_PartBCov = st.slider("Months of Part B Coverage", 0, 12, 12)
 
-        submit = st.form_submit_button("🔍 Predict Fraud Status")
+        ClaimDuration = st.slider("Claim Duration (days)", 0, 100, 10)
+        HospitalStayDuration = st.slider("Hospital Stay Duration (days)", 0, 100, 5)
 
+    st.markdown("---")
+    st.subheader("⚕️ Chronic Conditions")
+
+    yn_map = {"No": 0, "Yes": 1}
+    chronic_conditions = {
+        "ChronicCond_Alzheimer": st.selectbox("Alzheimer", ["No", "Yes"]),
+        "ChronicCond_Heartfailure": st.selectbox("Heart Failure", ["No", "Yes"]),
+        "ChronicCond_KidneyDisease": st.selectbox("Kidney Disease", ["No", "Yes"]),
+        "ChronicCond_Cancer": st.selectbox("Cancer", ["No", "Yes"]),
+        "ChronicCond_ObstrPulmonary": st.selectbox("Pulmonary Disease", ["No", "Yes"]),
+        "ChronicCond_Depression": st.selectbox("Depression", ["No", "Yes"]),
+        "ChronicCond_Diabetes": st.selectbox("Diabetes", ["No", "Yes"]),
+        "ChronicCond_IschemicHeart": st.selectbox("Ischemic Heart", ["No", "Yes"]),
+        "ChronicCond_Osteoporasis": st.selectbox("Osteoporosis", ["No", "Yes"]),
+        "ChronicCond_rheumatoidarthritis": st.selectbox("Rheumatoid Arthritis", ["No", "Yes"]),
+        "ChronicCond_stroke": st.selectbox("Stroke", ["No", "Yes"]),
+    }
+
+    # Prepare dictionary
     data = {
         'IPAnnualReimbursementAmt': IPAnnualReimbursementAmt,
         'IPAnnualDeductibleAmt': IPAnnualDeductibleAmt,
@@ -98,40 +87,36 @@ def get_user_input():
         'NoOfMonths_PartACov': NoOfMonths_PartACov,
         'NoOfMonths_PartBCov': NoOfMonths_PartBCov,
         'State': state_encoder.transform([State])[0],
-        'County': hash(County) % 100,
+        'County': hash(County) % 100,  # Simplified numerical conversion
         'Race': race_encoder.transform([Race])[0],
         'Gender': Gender,
         'ClaimDuration': ClaimDuration,
         'HospitalStayDuration': HospitalStayDuration,
     }
 
-    for k, v in chronic_features.items():
+    for k, v in chronic_conditions.items():
         data[k] = yn_map[v]
 
-    return pd.DataFrame([data]), submit
+    return pd.DataFrame([data])
 
-# Main
-input_df, submitted = get_user_input()
+# Prediction Area
+input_df = get_user_input()
 
-if submitted:
+if st.button("🔍 Predict Fraud Status"):
     input_df = input_df[model.feature_names_in_]
     prediction = model.predict(input_df)[0]
     prob = model.predict_proba(input_df)[0]
 
     st.markdown("---")
     if prediction == 1:
-        st.error(f"\n🚨 **Result: Potentially Fraudulent Claim!**\n\nConfidence: {prob[1]*100:.2f}%")
+        st.error(f"⚠️ Likely Fraudulent Claim (Confidence: {prob[1]*100:.2f}%)")
     else:
-        st.success(f"\n✅ **Result: Likely Legitimate Claim**\n\nConfidence: {prob[0]*100:.2f}%")
+        st.success(f"✅ Claim Seems Legitimate (Confidence: {prob[0]*100:.2f}%)")
 
-    st.markdown("""
-    <br>
-    <h4>📊 Detailed Prediction Probabilities</h4>
-    <ul>
-        <li><b>Not Fraudulent:</b> {:.2f}%</li>
-        <li><b>Fraudulent:</b> {:.2f}%</li>
-    </ul>
-    """.format(prob[0]*100, prob[1]*100), unsafe_allow_html=True)
+    with st.expander("🔎 Detailed Probabilities"):
+        st.write(f"**Not Fraudulent:** {prob[0]*100:.2f}%")
+        st.write(f"**Fraudulent:** {prob[1]*100:.2f}%")
 
-    st.markdown("---")
-    st.caption("Built with 💙 using Streamlit and Machine Learning")
+# Footer
+st.markdown("---")
+st.markdown("<p style='text-align: center; font-size: small;'>📊 Developed by Neha | Streamlit + Machine Learning</p>", unsafe_allow_html=True)
