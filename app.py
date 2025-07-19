@@ -117,6 +117,5 @@ if st.button("🔍 Predict Fraud Status"):
         st.write(f"**Not Fraudulent:** {prob[0]*100:.2f}%")
         st.write(f"**Fraudulent:** {prob[1]*100:.2f}%")
 
-# Footer
-st.markdown("---")
-st.markdown("<p style='text-align: center; font-size: small;'>📊 Developed by Neha | Streamlit + Machine Learning</p>", unsafe_allow_html=True)
+
+
