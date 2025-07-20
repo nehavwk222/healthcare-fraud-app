@@ -2,81 +2,59 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-from sklearn.preprocessing import LabelEncoder
 
 # Load model
 model = joblib.load("random_forest_model.pkl")
 
-# Set up encoders with same values used in training
-state_encoder = LabelEncoder()
-race_encoder = LabelEncoder()
-
-state_encoder.fit([
-    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME",
-    "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA",
-    "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
-])
-race_encoder.fit(["White", "Black", "Asian", "Hispanic", "Other"])
-
 st.set_page_config(page_title="Healthcare Fraud Detection", layout="centered")
 st.title("🩺 Healthcare Insurance Fraud Detection")
-st.write("Enter claim details below to predict whether it's potentially fraudulent.")
+st.write("Enter details below to predict whether the insurance claim is potentially fraudulent.")
 
 # Form Input UI
 def get_user_input():
-    st.subheader("📋 Claim Information")
+    st.subheader("📋 Claim & Patient Information")
 
-    IPAnnualReimbursementAmt = st.number_input("Annual Reimbursement Amount", min_value=0.0, value=1000.0)
-    IPAnnualDeductibleAmt = st.number_input("Annual Deductible Amount", min_value=0.0, value=500.0)
-    InscClaimAmtReimbursed = st.number_input("Claim Amount Reimbursed", min_value=0.0, value=100.0)
-    DeductibleAmtPaid = st.number_input("Deductible Amount Paid", min_value=0.0, value=100.0)
-
-    NoOfMonths_PartACov = st.slider("Months of Part A Coverage", 0, 12, 12)
-    NoOfMonths_PartBCov = st.slider("Months of Part B Coverage", 0, 12, 12)
-
-    State = st.selectbox("State", state_encoder.classes_.tolist())
-    County = st.text_input("County (used for numeric ID)", value="Default County")
-
-    Race = st.selectbox("Race", race_encoder.classes_.tolist())
+    InscClaimAmtReimbursed = st.number_input("Claim Amount Reimbursed ($)", min_value=0.0, value=1000.0)
+    DeductibleAmtPaid = st.number_input("Deductible Amount Paid ($)", min_value=0.0, value=500.0)
     Gender = st.selectbox("Gender", ["Female", "Male"])
     Gender = 0 if Gender == "Female" else 1
+
+    Race = st.selectbox("Race", ["White", "Black", "Asian", "Hispanic", "Other"])
+    race_map = {"White": 0, "Black": 1, "Asian": 2, "Hispanic": 3, "Other": 4}
+    Race = race_map[Race]
+
+    State = st.selectbox("State", [
+        "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME",
+        "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA",
+        "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
+    ])
+    State = hash(State) % 50
+
+    County = st.text_input("County Name", value="Default County")
+    County = hash(County) % 100
+
+    st.subheader("🩺 Chronic Conditions")
+    yn_map = {"No": 0, "Yes": 1, "Unknown": 2}
+    ChronicCond_Heartfailure = st.selectbox("Heart Failure", ["No", "Yes", "Unknown"])
+    ChronicCond_Cancer = st.selectbox("Cancer", ["No", "Yes", "Unknown"])
+    ChronicCond_Osteoporasis = st.selectbox("Osteoporosis", ["No", "Yes", "Unknown"])
 
     ClaimDuration = st.slider("Claim Duration (days)", 0, 100, 10)
     HospitalStayDuration = st.slider("Hospital Stay Duration (days)", 0, 100, 5)
 
-    st.subheader("⚕️ Chronic Conditions")
-    yn_map = {"No": 0, "Yes": 1}
-    chronic_features = {
-        "ChronicCond_Alzheimer": st.selectbox("Alzheimer", ["No", "Yes"]),
-        "ChronicCond_Heartfailure": st.selectbox("Heart Failure", ["No", "Yes"]),
-        "ChronicCond_KidneyDisease": st.selectbox("Kidney Disease", ["No", "Yes"]),
-        "ChronicCond_Cancer": st.selectbox("Cancer", ["No", "Yes"]),
-        "ChronicCond_ObstrPulmonary": st.selectbox("Pulmonary Disease", ["No", "Yes"]),
-        "ChronicCond_Depression": st.selectbox("Depression", ["No", "Yes"]),
-        "ChronicCond_Diabetes": st.selectbox("Diabetes", ["No", "Yes"]),
-        "ChronicCond_IschemicHeart": st.selectbox("Ischemic Heart", ["No", "Yes"]),
-        "ChronicCond_Osteoporasis": st.selectbox("Osteoporosis", ["No", "Yes"]),
-        "ChronicCond_rheumatoidarthritis": st.selectbox("Rheumatoid Arthritis", ["No", "Yes"]),
-        "ChronicCond_stroke": st.selectbox("Stroke", ["No", "Yes"]),
-    }
-
     data = {
-        'IPAnnualReimbursementAmt': IPAnnualReimbursementAmt,
-        'IPAnnualDeductibleAmt': IPAnnualDeductibleAmt,
         'InscClaimAmtReimbursed': InscClaimAmtReimbursed,
         'DeductibleAmtPaid': DeductibleAmtPaid,
-        'NoOfMonths_PartACov': NoOfMonths_PartACov,
-        'NoOfMonths_PartBCov': NoOfMonths_PartBCov,
-        'State': state_encoder.transform([State])[0],
-        'County': hash(County) % 100,  # Example numeric hash
-        'Race': race_encoder.transform([Race])[0],
         'Gender': Gender,
+        'Race': Race,
+        'State': State,
+        'County': County,
+        'ChronicCond_Heartfailure': yn_map[ChronicCond_Heartfailure],
+        'ChronicCond_Cancer': yn_map[ChronicCond_Cancer],
+        'ChronicCond_Osteoporasis': yn_map[ChronicCond_Osteoporasis],
         'ClaimDuration': ClaimDuration,
-        'HospitalStayDuration': HospitalStayDuration,
+        'HospitalStayDuration': HospitalStayDuration
     }
-
-    for k, v in chronic_features.items():
-        data[k] = yn_map[v]
 
     return pd.DataFrame([data])
 
@@ -84,9 +62,8 @@ def get_user_input():
 input_df = get_user_input()
 
 if st.button("🔍 Predict Fraud Status"):
-    # Just to be safe
     input_df = input_df[model.feature_names_in_]
-    
+
     prediction = model.predict(input_df)[0]
     prob = model.predict_proba(input_df)[0]
 
